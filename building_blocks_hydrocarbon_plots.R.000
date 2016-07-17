@@ -1,0 +1,411 @@
+#' Function to query database and promote to timeseries
+#' 
+#' @author Stuart K. Grange
+#' 
+#' No export
+get_measurement_time_series <- function(site_code, month_past = 6, quarter = '2015-10-01') {
+  
+  # Get site information
+  data_site_info <- search_database("archive", extra = TRUE) %>% 
+    filter(site_friendly == site_code,
+           network_id == "hc" | variable_friendly %in% c("co", "nox"),
+           is.na(date_ended) | date_ended == ymd("2015-12-31"),
+           network_id != "marga")
+  
+  # Get start and end dates
+  if (!is.na(quarter)) {
+    
+    # Parse
+    date_quarter <- parse_date_time(quarter, c("ymd", "dmy"))
+    
+    # Start date
+    date_start <- floor_date(date_quarter, "quarter")
+    # Preceding 2 weeks
+    date_start <- date_start - weeks(2)
+    
+    # End date, addition is to ensure the quarter has been entered
+    date_end <- ceiling_date(date_quarter + 1, "quarter")
+    
+    # Following two weeks too
+    date_end <- date_end + weeks(2)
+  
+  } else {
+    
+    # Get date range for query
+    date_end <- Sys.Date()
+    # n months in the past
+    date_start <- date_end - months(month_past)
+    
+  }
+  
+  # To character for function
+  date_end <- as.character(date_end)
+  date_start <- as.character(date_start)
+  
+  # Import hourly data
+  data_hc <- import_measures("archive", site_network_id = data_site_info$site_network_id,
+                             start = date_start, end = date_end) %>% 
+    select(date,
+           site,
+           site_name,
+           variable,
+           value) %>% 
+    spread(variable, value)
+  
+  # Build timeseries for plots
+  time_series <- data_frame_to_timeseries(data_hc)
+  
+  # Return
+  time_series
+  
+}
+
+
+#' Function to create grouped interactive dygraphs. 
+#' 
+#' @author Stuart K. Grange
+#' 
+#' No export
+interactive_plot <- function(ts, type, group) {
+  
+  if (!is.null(ts)) {
+    
+    # Get colour vector
+    colour_vector <- threadr::ggplot2_colours(45)
+    
+    if (type == "nox") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[1]) %>% 
+        dySeries(label = "NOx") %>% 
+        dyAxis("y", label = "Hourly NO<sub>x</sub> (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "co") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[2]) %>% 
+        dySeries(label = "CO") %>% 
+        dyAxis("y", label = "Hourly CO (mg m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "13bdiene") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[3]) %>% 
+        dySeries(label = "1,3-Butadiene") %>% 
+        dyAxis("y", label = "Hourly 1,3-Butadiene (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "benzene") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[4]) %>% 
+        dySeries(label = "Benzene") %>% 
+        dyAxis("y", label = "Hourly benzene (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    # Extras
+    if (type == "123tmb") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[5]) %>% 
+        dySeries(label = "1,2,3-Trimethylbenzene") %>% 
+        dyAxis("y", label = "Hourly 1,2,3-Trim. (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    # Here
+    if (type == "124tmb") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[6]) %>% 
+        dySeries(label = "1,2,4-Trimethylbenzene") %>% 
+        dyAxis("y", label = "Hourly 1,2,4-Trim. (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "135tmb") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[7]) %>% 
+        dySeries(label = "1,3,5-Trimethylbenzene") %>% 
+        dyAxis("y", label = "Hourly 1,3,5-Trim. (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "1butene") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[8]) %>% 
+        dySeries(label = "1-Butene") %>% 
+        dyAxis("y", label = "Hourly 1-Butene (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "1penten") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[9]) %>% 
+        dySeries(label = "1-Pentene") %>% 
+        dyAxis("y", label = "Hourly 1-Pentene (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "2mepent") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[10]) %>% 
+        dySeries(label = "2-Methylpentane") %>% 
+        dyAxis("y", label = "Hourly 2-Methylpen. (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "c2butene") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[11]) %>% 
+        dySeries(label = "c2-Butene") %>% 
+        dyAxis("y", label = "Hourly c2-Butene (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "ethane") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[12]) %>% 
+        dySeries(label = "Ethane") %>% 
+        dyAxis("y", label = "Hourly ethane (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "ethbenz") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[13]) %>% 
+        dySeries(label = "Ethylbenzene") %>% 
+        dyAxis("y", label = "Hourly ethylbenzene (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "ethene") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[14]) %>% 
+        dySeries(label = "Ethene") %>% 
+        dyAxis("y", label = "Hourly ethene (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "ethyne") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[15]) %>% 
+        dySeries(label = "Ethyne") %>% 
+        dyAxis("y", label = "Hourly ethyne (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "ibutane") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[16]) %>% 
+        dySeries(label = "i-Butane") %>% 
+        dyAxis("y", label = "Hourly i-butane (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "ioctane") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[17]) %>% 
+        dySeries(label = "i-Octane") %>% 
+        dyAxis("y", label = "Hourly i-octane (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "ipentane") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[18]) %>% 
+        dySeries(label = "i-Pentane") %>% 
+        dyAxis("y", label = "Hourly i-pentane (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "isoprene") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[19]) %>% 
+        dySeries(label = "Isoprene") %>% 
+        dyAxis("y", label = "Hourly isoprene (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "mpxylene") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[20]) %>% 
+        dySeries(label = "m-Xylene and p-xylene") %>% 
+        dyAxis("y", label = "Hourly m-xylene and p-xylene (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "nbutane") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[21]) %>% 
+        dySeries(label = "n-Butane") %>% 
+        dyAxis("y", label = "Hourly n-butane (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "nheptane") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[22]) %>% 
+        dySeries(label = "n-Heptane") %>% 
+        dyAxis("y", label = "Hourly n-heptane (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "nhexane") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[23]) %>% 
+        dySeries(label = "n-Hexane") %>% 
+        dyAxis("y", label = "Hourly n-hexane (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "noctane") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[24]) %>% 
+        dySeries(label = "n-Octane") %>% 
+        dyAxis("y", label = "Hourly n-octane (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "npentane") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[25]) %>% 
+        dySeries(label = "n-Pentane") %>% 
+        dyAxis("y", label = "Hourly n-pentane (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "oxylene") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[26]) %>% 
+        dySeries(label = "o-Xylene") %>% 
+        dyAxis("y", label = "Hourly o-xylene (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "propane") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[27]) %>% 
+        dySeries(label = "Propane") %>% 
+        dyAxis("y", label = "Hourly propane (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "propene") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[28]) %>% 
+        dySeries(label = "Propene") %>% 
+        dyAxis("y", label = "Hourly propene (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "t2butene") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[29]) %>% 
+        dySeries(label = "Trans-2-butene") %>% 
+        dyAxis("y", label = "Hourly trans-2-butene (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "t2penten") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[30]) %>% 
+        dySeries(label = "Trans-2-pentene") %>% 
+        dyAxis("y", label = "Hourly trans-2-pentene (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    if (type == "toluene") {
+      
+      plot <- dygraph(ts, group = group) %>% 
+        dyOptions(colors = colour_vector[31]) %>% 
+        dySeries(label = "Toluene") %>% 
+        dyAxis("y", label = "Hourly Toluene (&#956;g m<sup>-3</sup>)") %>% 
+        dyRangeSelector()
+      
+    }
+    
+    # Return
+    plot
+    
+  }
+
+}
+
+
+interactive_map <- function(df) {
+  
+  # Map
+  map <- leaflet() %>% 
+    addTiles(group = "OpenStreetMap") %>% 
+    addProviderTiles("Stamen.Toner", group = "Toner") %>% 
+    addProviderTiles("Esri.WorldImagery", group = "Images") %>% 
+    addCircleMarkers(data = df, color = "tomato", fillOpacity = 0.8, 
+                     popup = ~ site_name, group = "Sites") %>% 
+    addLayersControl(baseGroups = c("Toner", "OpenStreetMap", "Images"),
+                     overlayGroups = "Sites")
+  
+  # Return
+  map
+  
+}

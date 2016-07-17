@@ -1,0 +1,38 @@
+Loading required package: stringr
+Loading required package: lubridate
+Loading required package: methods
+
+Attaching package: 'lubridate'
+
+The following object is masked from 'package:plyr':
+
+    here
+
+Loading required package: dplyr
+
+Attaching package: 'dplyr'
+
+The following objects are masked from 'package:lubridate':
+
+    intersect, setdiff, union
+
+The following objects are masked from 'package:plyr':
+
+    arrange, count, desc, failwith, id, mutate, rename, summarise,
+    summarize
+
+The following objects are masked from 'package:stats':
+
+    filter, lag
+
+The following objects are masked from 'package:base':
+
+    intersect, setdiff, setequal, union
+
+Querying measurement tables...
+Querying measurement tables...
+Querying measurement tables...
+Querying measurement tables...
+Querying measurement tables...
+Assuming 'longitude' and 'latitude' are longitude and latitude, respectively
+Copying files to webserver...

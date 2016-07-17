@@ -1,0 +1,97 @@
+---
+output:
+  pdf_document: default
+  html_document:
+    fig_height: 2.5
+    fig_width: 9.5
+    theme: yeti
+---
+
+```{r set_up, message = FALSE, echo = FALSE, warning = FALSE}
+# library(importr)
+library(threadr)
+library(dygraphs)
+library(tidyr)
+library(leaflet)
+
+# Load custom functions
+# source("building_blocks_hydrocarbon_plots.R")
+source("get_data_DB.R")
+
+# Time of script running
+date_generation <- str_c("Database queried at ", Sys.time(), ".")
+```
+# 
+
+## 
+```{r import_data, message = FALSE, echo = FALSE, results = "hide", cache = FALSE}
+
+# Site string
+site <- "chbo"
+
+# Get data
+time_series <- get_measurement_time_series(site)
+```
+
+ `write something here using these symbols`
+
+# 
+
+## 
+
+```{r plot_marylebone, echo = FALSE}
+# Message
+date_generation
+
+# Plot
+# Priority pollutatants
+interactive_plot(time_series$nox, "nox", group = site)
+interactive_plot(time_series$co, "co", group = site)
+interactive_plot(time_series$ethane, "ethane", group = site)
+interactive_plot(time_series$ethene, "ethene", group = site)
+interactive_plot(time_series$propane, "propane", group = site)
+interactive_plot(time_series$propene, "propene", group = site)
+interactive_plot(time_series$ibutane, "ibutane", group = site)
+interactive_plot(time_series$nbutane, "nbutane", group = site)
+interactive_plot(time_series$ethyne, "ethyne", group = site)
+interactive_plot(time_series$t2butene, "t2butene", group = site)
+interactive_plot(time_series$`1butene`, "1butene", group = site)
+interactive_plot(time_series$c2butene, "c2butene", group = site)
+interactive_plot(time_series$ipentane, "ipentane", group = site)
+interactive_plot(time_series$npentane, "npentane", group = site)
+interactive_plot(time_series$`13bdiene`, "13bdiene", group = site)
+interactive_plot(time_series$t2penten, "t2penten", group = site)
+interactive_plot(time_series$`1penten`, "1penten", group = site)
+interactive_plot(time_series$`2mepent`, "2mepent", group = site)
+interactive_plot(time_series$nhexane, "nhexane", group = site)
+interactive_plot(time_series$isoprene, "isoprene", group = site)
+interactive_plot(time_series$nheptane, "nheptane", group = site)
+interactive_plot(time_series$ioctane, "ioctane", group = site)
+interactive_plot(time_series$noctane, "noctane", group = site)
+interactive_plot(time_series$benzene, "benzene", group = site)
+interactive_plot(time_series$toluene, "toluene", group = site)
+interactive_plot(time_series$ethbenz, "ethbenz", group = site)
+interactive_plot(time_series$mpxylene, "mpxylene", group = site)
+interactive_plot(time_series$oxylene, "oxylene", group = site)
+interactive_plot(time_series$`135tmb`, "135tmb", group = site)
+interactive_plot(time_series$`124tmb`, "124tmb", group = site)
+interactive_plot(time_series$`123tmb`, "123tmb", group = site)
+```
+
+
+```{r import_data_for_map, message = FALSE, echo = FALSE, results = "hide", cache = FALSE }
+# Get site locations
+data_site_info <- read.csv("data_site.csv")[-1]
+data_site_info <- data_site_info%>%
+  distinct(site)
+
+```
+ #
+ 
+ ##
+
+```{r map, fig.height = 8, echo = FALSE, message = FALSE}
+# Build map
+interactive_map(data_site_info)
+```
+

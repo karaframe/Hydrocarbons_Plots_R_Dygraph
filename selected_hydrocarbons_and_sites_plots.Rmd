@@ -1,0 +1,33 @@
+---
+output:
+  html_document:
+    fig_height: 2.5
+    fig_width: 9.5
+    theme: yeti
+---
+
+```{r set_up, message = FALSE, echo = FALSE}
+library(importr)
+library(threadr)
+library(leaflet)
+library(tidyr)
+
+# Load custom functions
+source("building_blocks_hydrocarbon_plots.R")
+```
+
+```{r import_data, message = FALSE, echo = FALSE, results = "hide", cache = FALSE}
+# Get site locations
+data_info_sites <- search_database("archive", "automatic", extra = TRUE) %>%
+  filter(network_id == "hc", is.na(date_ended) | date_ended == ymd("2015-12-31")) %>%
+  distinct(site_name, latitude, longitude)
+```
+
+# 
+
+##
+
+```{r map, fig.height = 8, echo = FALSE, message = FALSE}
+# Build map
+interactive_map(data_info_sites)
+```

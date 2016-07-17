@@ -1,0 +1,268 @@
+---
+title: "**Interactive Reporting for Scunthorpe Town PAH monitoring network using R and openair**"
+author: 
+  - "Ricardo Energy & Environment"
+date: "May 2016"
+output:
+  html_document:
+    theme: flatly
+    toc: true
+    number_sections: true
+    code_download: true
+# bibliography: ~/dropbox/dcc-refs.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE,
+                      warning = FALSE, fig.retina = 2,
+                      results = 'hide', cache = TRUE)
+```
+
+```{r eval=FALSE}
+# # use this command to render to show code source (orginal Rmd file)
+# render("PAH_example.Rmd", html_document(code_download=TRUE, 
+#                                         theme = "flatly", 
+#                                         toc = TRUE, 
+#                                         toc_float = list(collapsed = FALSE),
+#                                         number_sections = TRUE))
+```
+
+
+```{r include=FALSE,cache=FALSE}
+library(openair)
+library(importr)
+library(dplyr)
+library(dygraphs)
+library(xts)
+library(worldmet)
+library(leaflet)
+```
+
+
+
+```{r importData, include = FALSE}
+# select Scunthorpe Town as an example for analysis and PAH data
+pah_select <- search_database("archive", extra = TRUE) %>%
+  filter(site == "SCN2", network_id == "paha")
+
+# ids of site/species
+id <- pah_select$site_network_id
+
+concs <- import_measures("archive", site_network_id = id, start = 2007, end = 2015)
+
+# just select what we need
+concs <- select(concs, date, date_end, variable, value)
+
+# BaP concentrations
+bap <- filter(concs, variable == "beapyr_p")
+```
+
+
+```{r importMet}
+# Humberside met station, 16km from site
+# from search based on site getMeta(lat = 53.58, lon = -0.6)
+met <- importNOAA(code = "033735-99999", year = 2006:2014)
+```
+
+```{r importScun}
+# This is the hourly, common data
+scun <- import_measures("archive", site = "scn2", 
+                        variable = c("so2", "pm10"),
+                        start = 2006, end = 2014)
+
+# join them together
+scun <- inner_join(scun, met, by = "date")
+```
+
+
+# Introduction
+
+This short document shows some of the analyses possible for PAH concentrations considering the Scunthrope Town monitoring site. The examples are illustrative of the types of analysis that can be undertaken to gain more insight into the causes and effects of PAH concentrations across the network developed specifically for the proposal for the 2016-2019 monitoring network. Data used is real data publically available from UK-AIR.
+
+The PAH measurements in the UK represent a valuable resource. However, it is considered that considerably more insight could be gained into the sources if careful analysis is undertaken using `modern', innovative data analysis tools. Additionally, methods have been developed by Ricardo Energy & Environment to provide much richer, interactive regular reporting capabilities.
+
+The methods developed by Ricardo Energy & Environment can:
+
+- Better quantify the different sources affecting measurements sites.
+- Improve the analysis of ambient trends through robust trend analysis
+- Provide comprehensive information to policy makers on how different air quality policies affect actual concentrations.
+- Provide detailed, interesting and insightful `rich content' reports on a regular basis.
+
+> **<span style="color:purple">Certain aspects of this report are interactive. These are highlighted in bold purple text.</span>**
+
+## **openair** software
+
+Ricardo Energy & Environment lead the development of a set of data analysis tools called **openair** [@Carslaw2012]. These tools have been developed since 2008 from the UK Natural Environment Research Council (NERC).
+
+## Location of the PAH monitoring sites 2014
+
+The map below shows the location of the PAH monitoring sites.
+
+> **<span style="color:purple">Click on the markers to see the site names and zoom in to see more local detail.</span>**
+
+```{r siteInfo}
+# query all PAH sites from database archive
+sites <- search_database("archive", extra = TRUE) %>%
+  filter(network_id == "paha")
+
+# we only need the unique records of site location
+id <- which(!duplicated(sites$latitude))
+sites <- sites[id, ]
+```
+
+
+```{r map,cache=FALSE,results='asis'}
+# a map is very easy to put together
+m <- leaflet(data = sites) %>% addTiles() %>%
+  addMarkers(~longitude, ~latitude, popup = ~as.character(site_name))
+m
+```
+
+
+# Wind Rose for Scunthorpe Town PAH monitoring site
+
+Wind roses are useful for gaining an idea of the prevailing meteorology and how this affects concentrations. Data have been used from the Met Office Humberside site approximately 16 km from the Scunthorpe Town site. The plot shows that over the period of the measurements the wind direction was mostly from the south-west, in line with the prevailing wind directions for the UK.
+
+```{r windRose, fig.width=4.5, fig.height=4.5}
+windRose(met, cols = "heat")
+```
+
+
+# Interactive time series plots for Scunthorpe
+
+## Time series
+
+As an example of interactive plotting, the concentration of Benzo[a]pyrene (B[a]P), SO~2~ and PM~10~ is shown below. 
+~
+One of the striking aspects of these monthly average plots is that the large peaks for B[a]P in spring 2008 and 2013 also tend to coincide with peaks in SO~2~ and PM~10~ --- which helps to provide information on the most likley sources of these pollutants.
+
+> **<span style="color:purple">It is easy to zoom in on a period of interest using the mouse. Click and drag across the time span of interest (double-click to reset the graph).</span>**
+
+```{r dyGraph,cache = FALSE,fig.width=8,fig.height=2,results='asis'}
+# monthly mean concentrations of common species
+mnth <- timeAverage(scun, avg.time = "month")
+
+bap_plt <- xts(bap$value, order.by = bap$date)
+
+pm10_plt <- xts(mnth$pm10, order.by = mnth$date)
+
+so2_plt <- xts(mnth$so2, order.by = mnth$date)
+
+dygraph(bap_plt, group = "time_series", main = "B[a]P at Scunthrope Town") %>% 
+  dyAxis("y", label = "B[a]P (ng m<sup>-3</sup>)") %>% 
+  dyOptions(colors = "tomato", fillGraph = TRUE)
+
+dygraph(pm10_plt, group = "time_series", main = "PM10 at Scunthrope Town") %>% 
+  dyAxis("y", label = "PM10 (&#956;g m<sup>-3</sup>)") %>% 
+  dyOptions(colors = "dodgerblue", fillGraph = TRUE)
+
+dygraph(so2_plt, group = "time_series", main = "SO2 at Scunthrope Town") %>% 
+  dyAxis("y", label = "SO2 (&#956;g m<sup>-3</sup>)") %>% 
+  dyOptions(colors = "forestgreen", fillGraph = TRUE)
+```
+
+## Robust trend estimates
+
+The previous time series plot for B[a]P shows that the data are very skewed, as shown by the few high values. Such data can present challenges for quantifing the trends. In **openair** nonparametric techniques are available to robustly calculate trends, as shown below. For B[a]P between 1997 and 2014 there is evidence at the 95% confidence interval that concentrations have increased over time.
+
+```{r trendBaP,fig.width=6,fig.height=5,results="hide"}
+TheilSen(bap, pollutant = "value", pch = 16, cex = 1.5, ylab = "B[a]P (ng/m3)")
+```
+
+
+# Interactive polar plots for various pollutants at Scunthorpe Town site {.tabset .tabset-pills}
+
+Bivariate polar plots can provide very useful information on both the directions of important sources *and* the source characteristics e.g. whether the sources is likely to be a point source released at height. The techniques used in **openair** are based on a series of publications [@Carslaw2006a, @CarslawClust2013, @Uria2014]. 
+
+> **<span style="color:purple">Select one of the tabs below to find out more about the polar plots for specific pollutants.</span>**
+
+## B[a]P
+
+The B[a]P concentrations are dominated by wind directions from the east and north-east. It is also noticeable that high concentrations of SO~2~ are possible under high wind speed conditions, which is indicative of tall stack sources or possible wind-blown suspension. However, the similarity with other plots (in particular SO~2~) suggests that stack emissions may well be important for B[a]P at this site.
+
+```{r polarBaP, fig.width=4.5,fig.height=4.5}
+# expand monthly time series to hourly (same as met data)
+bap2 <- pad_multiday(bap, "hour")
+bap2 <- inner_join(bap2, met, by = "date")
+polarPlot(bap2, poll = "value", limits = c(0, 5), col = "jet",
+          resolution = "fine")
+```
+
+## SO~2~
+
+The SO~2~ concentrations are dominated by wind directions from the east and share some similartiries with the B[a]P plot. It is also noticeable that high concentrations of SO~2~ are possible under high wind speed conditions, which is indicative of tall stack sources.
+
+```{r so2, fig.width=4.5,fig.height=4.5}
+polarPlot(scun, pollutant = "so2", col = "jet", resolution = "fine")
+```
+
+## PM~10~
+
+The highest concentrations of PM~10~ occur for high wind speed conditions; mostly from the east. The plot suggests similar sources to B[a]P and SO~2~.
+
+```{r pm10, fig.width=4.5,fig.height=4.5}
+polarPlot(scun, pollutant = "pm10", col = "jet", resolution = "fine")
+```
+
+## B[a]P --- temperature
+
+This plot shows ambient air temperature on the radial axis. The plot shows that the highest B[a]P concentrations occur for low ambient temperatures (close to freezing) and for a source to the north-east. This plot can usefully be compared with that for PM~10~, which shows different behaviour and is suggestive of different source contributions.
+
+```{r BaPTemp,fig.width=4.5,fig.height=4.5}
+polarPlot(bap2, poll = "value", x = "air_temp", col = "jet",
+  resolution = "fine")
+```
+
+## PM~10~ --- temperature
+
+The highest PM~10~ concentrations tend to occur when the wind is blowing from the south-east under high ambient temperatures. One potential explanation for this behaviour is that this source is re-suspended particulate that becomes more important under relative high ambient temperatures and dry conditions. It is clear that the behaviour of PM~10~ differs from that of B[a]P, which could help distinguish between different source types.
+
+```{r pm10Temp, fig.width=4.5,fig.height=4.5}
+polarPlot(scun, pollutant = "pm10", col = "jet", x= "air_temp",
+  resolution = "fine")
+```
+
+
+# Relationships between variables
+## Correlation plot
+
+When numerous species are measured, as in teh case of PAH concentrations, it can be difficult to work out which species are related to which other species. 
+
+The `corPlot` function in **openair** shows the correlation coded in three ways: by shape (ellipses), colour and the numeric value. The ellipses can be thought of as visual representations of scatter plot. With a perfect positive correlation a line at 45 degrees positive slope is drawn. For zero correlation the shape becomes a circle --- imagine a `fuzz' of points with no relationship between them.
+
+With many different variables it can be difficult to see relationships
+between variables i.e. which variables tend to behave most like one
+another. For this reason hierarchical clustering is applied to the
+correlation matrices to group variables that are most similar to one
+another.
+
+An example of the `corPlot` function is shown below. In this plot, species that behave most similalry to one another tend to be closest together. In general there is a group of PAHs that are very highly correlated with one another (r ~ 0.9 to 0.99) and other species that tend to be less correlated (mostly shown by the last six species in the plot below).
+
+
+```{r corPlot,fig.width=8,fig.height=8}
+library(tidyr)
+
+# need columns of variables
+wide_concs <- spread(concs, key = variable, value = value)
+
+corPlot(wide_concs, alpha = 0.6)
+```
+
+# Seasonal variations
+
+Diurnal and seasonal variations provide important information about the characteristics of different pollutant sources. In this plot B[a]P is shown to peak during spring. Such behaviour could be compared with known operations on the steelworks site to help determine the most likely source contributions.
+
+
+```{r timeVar, fig.show='hide'}
+plt <- timeVariation(bap, pollutant = "value",
+                     ylab = "B[a]P (ug/m3)")
+```
+
+```{r fig.width=4,fig.height=4,cache=FALSE}
+plot(plt, subset = "month")
+```
+
+
+# References
+
+
